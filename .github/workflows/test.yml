@@ -1,0 +1,54 @@
+name: Tests
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: learning_platform_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Load test database schema
+        run: |
+          # Skip the first 5 header/CREATE DATABASE/USE lines — the CI
+          # database is already created by the mysql service container above.
+          tail -n +6 server/schema.sql | mysql -h127.0.0.1 -uroot learning_platform_test
+
+      - name: Run test suite
+        env:
+          NODE_ENV: test
+          DB_HOST: 127.0.0.1
+          DB_USER: root
+          DB_PASSWORD: ''
+          DB_NAME: learning_platform_test
+          JWT_SECRET: ci_test_secret
+          SMTP_HOST: '' # forces the Ethereal fallback, which fails gracefully in CI's sandboxed network — see README
+        run: npm test
