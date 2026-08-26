@@ -19,6 +19,9 @@ function requireAuthOrRedirect() {
 // resolves with an object of {name: value} on Save, or null on Cancel/Escape.
 function openFormModal({ title, fields, submitLabel = 'Save' }) {
   return new Promise((resolve) => {
+    // Defensive cleanup: remove any stuck leftover modal before creating a new one
+    document.querySelectorAll('.modal-overlay').forEach((el) => el.remove());
+
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
@@ -37,13 +40,13 @@ function openFormModal({ title, fields, submitLabel = 'Save' }) {
             )
             .join('')}
           <div class="modal-actions">
-            <button type="button" class="btn secondary" id="modal-cancel-btn">Cancel</button>
+            <button type="button" id="modal-cancel-btn" class="btn secondary modal-cancel-btn">Cancel</button>
             <button type="submit" class="btn">${escapeHtml(submitLabel)}</button>
           </div>
         </form>
       </div>`;
     document.body.appendChild(overlay);
-    document.getElementById(`modal-field-${fields[0].name}`)?.focus();
+    overlay.querySelector(`#modal-field-${fields[0].name}`)?.focus();
 
     function close(result) {
       overlay.remove();
@@ -58,12 +61,12 @@ function openFormModal({ title, fields, submitLabel = 'Save' }) {
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) close(null);
     });
-    document.getElementById('modal-cancel-btn').addEventListener('click', () => close(null));
-    document.getElementById('modal-form').addEventListener('submit', (e) => {
+    overlay.querySelector('.modal-cancel-btn').addEventListener('click', () => close(null));
+    overlay.querySelector('form').addEventListener('submit', (e) => {
       e.preventDefault();
       const result = {};
       fields.forEach((f) => {
-        result[f.name] = document.getElementById(`modal-field-${f.name}`).value;
+        result[f.name] = overlay.querySelector(`#modal-field-${f.name}`).value;
       });
       close(result);
     });
@@ -383,10 +386,10 @@ async function renderCourseDetail({ id }) {
     const uploadForm = Auth.isInstructor()
       ? `${instructorModuleControls}
          <form class="upload-form" data-module-id="${mod.ModuleID}" style="margin-top:8px">
-           <input type="file" accept=".pdf,.jpg,.jpeg,.png" required />
-           <button class="btn secondary" type="submit">Upload Material</button>
+           <input type="file" accept=".pdf,.jpg,.jpeg,.png" required ${!Connectivity.isOnline ? 'disabled' : ''} />
+           <button class="btn secondary" type="submit" ${!Connectivity.isOnline ? 'disabled title="Uploading requires an internet connection"' : ''}>Upload Material</button>
          </form>
-         <button class="btn secondary add-quiz-btn" data-module-id="${mod.ModuleID}" style="margin-top:8px">+ Add Quiz</button>`
+         <button class="btn secondary add-quiz-btn" data-module-id="${mod.ModuleID}" style="margin-top:8px" ${!Connectivity.isOnline ? 'disabled title="Creating quizzes requires an internet connection"' : ''}>+ Add Quiz</button>`
       : '';
 
     moduleHtml += `
@@ -400,11 +403,12 @@ async function renderCourseDetail({ id }) {
   }
 
   const addModuleBtn = Auth.isInstructor()
-    ? `<button class="btn secondary" id="add-module-btn">+ Add Module</button>`
+    ? `<button class="btn secondary" id="add-module-btn" ${!Connectivity.isOnline ? 'disabled title="Adding modules requires an internet connection"' : ''}>+ Add Module</button>`
     : '';
   const courseOwnerControls =
-    Auth.isInstructor() && course.InstructorID === Auth.currentUser.userId
+    Auth.isInstructor() && String(course.InstructorID) === String(Auth.currentUser.userId)
       ? `<button class="btn secondary" id="edit-course-btn" ${!Connectivity.isOnline ? 'disabled' : ''}>Edit Course</button>
+         <button class="btn ${course.IsPublished ? 'secondary' : ''}" id="publish-toggle-btn" ${!Connectivity.isOnline ? 'disabled' : ''}>${course.IsPublished ? 'Unpublish' : 'Publish'}</button>
          <button class="btn danger" id="delete-course-btn" ${!Connectivity.isOnline ? 'disabled' : ''}>Delete Course</button>
          <a class="btn secondary" href="#/course-progress/${id}">View Progress Summary</a>`
       : '';
@@ -432,6 +436,7 @@ async function renderCourseDetail({ id }) {
     <a href="#/dashboard">&larr; Back to courses</a>
     <h2>${escapeHtml(course.Title)}</h2>
     <p style="color:var(--muted)">${escapeHtml(course.Description || '')}</p>
+    ${Auth.isInstructor() && !Connectivity.isOnline ? '<p class="tag needs-net">Course administration requires an internet connection.</p>' : ''}
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       <button class="btn" id="download-course-btn" ${!Connectivity.isOnline ? 'disabled' : ''}>⬇ Download entire course for offline</button>
       ${addModuleBtn}
@@ -462,6 +467,17 @@ async function renderCourseDetail({ id }) {
     });
   }
 
+  if (document.getElementById('publish-toggle-btn')) {
+    document.getElementById('publish-toggle-btn').addEventListener('click', async () => {
+      try {
+        await Api.publishCourse(id, !course.IsPublished);
+        renderCourseDetail({ id });
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  }
+  
   if (document.getElementById('delete-course-btn')) {
     document.getElementById('delete-course-btn').addEventListener('click', async () => {
       if (!confirm(`Delete "${course.Title}" and everything in it? This cannot be undone.`)) return;
@@ -651,12 +667,27 @@ function renderNewQuiz({ moduleId }) {
             </div>`
           )
           .join('')}
-      </div>`;
+      </div>
+      <button class="btn secondary add-option-btn" type="button">+ Add Option</button>`;
     document.getElementById('questions-container').appendChild(div);
   }
   addQuestionBlock();
 
   document.getElementById('add-question-btn').addEventListener('click', addQuestionBlock);
+  document.getElementById('questions-container').addEventListener('click', (e) => {
+    const addOptionBtn = e.target.closest('.add-option-btn');
+    if (!addOptionBtn) return;
+
+    const questionBlock = addOptionBtn.closest('[data-qid]');
+    const optionsContainer = questionBlock.querySelector('.options-container');
+    const optionIndex = optionsContainer.querySelectorAll('.opt-text').length;
+    const optionRow = document.createElement('div');
+    optionRow.style.cssText = 'display:flex;gap:8px;align-items:center';
+    optionRow.innerHTML = `
+      <input type="radio" name="correct-${questionBlock.dataset.qid}" class="opt-correct" value="${optionIndex}" />
+      <input class="opt-text" placeholder="Option ${optionIndex + 1}" style="flex:1" />`;
+    optionsContainer.appendChild(optionRow);
+  });
 
   document.getElementById('save-quiz-btn').addEventListener('click', async () => {
     const errorEl = document.getElementById('nq-error');
@@ -1001,8 +1032,16 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   Router.navigate('/login');
 });
 
-Connectivity.onChange(() => {
+Connectivity.onChange(async (isOnline) => {
   updateNavVisibility();
+  if (isOnline && Auth.isLoggedIn() && Auth.currentUser.role === 'Student') {
+    try {
+      await SyncModule.syncAll();
+      await SyncModule.updatePendingBadge();
+    } catch (_) {
+      // Keep attempts queued; the manual Sync page can retry later.
+    }
+  }
 });
 
 (async function bootstrap() {

@@ -91,6 +91,14 @@ input, textarea, select {
   font-size: 0.95rem;
   margin-bottom: 10px;
 }
+input[type="radio"] {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+}
+.options-container .opt-text {
+  min-width: 0;
+}
 label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 4px; }
 
 .form-container { max-width: 400px; margin: 40px auto; }

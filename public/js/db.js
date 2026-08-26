@@ -33,7 +33,7 @@ const Store = {
   },
 
   async cacheCourseDetail(courseId, course, modules) {
-    return db.courseDetails.put({ CourseID: courseId, course, modules, cachedAt: Date.now() });
+    return db.courseDetails.put({ CourseID: Number(courseId), course, modules, cachedAt: Date.now() });
   },
   async getCachedCourseDetail(courseId) {
     return db.courseDetails.get(Number(courseId));
