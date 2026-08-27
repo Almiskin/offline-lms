@@ -174,6 +174,23 @@ describe('POST /api/sync/quiz-attempt', () => {
     expect(rows[0].c).toBe(1);
   });
 
+  it('blocks an unenrolled student from synchronizing a quiz attempt', async () => {
+    const outsiderToken = await registerUser('Student', 'sync-outsider@example.com');
+
+    const res = await request(app)
+      .post('/api/sync/quiz-attempt')
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({
+        quizId,
+        clientAttemptUUID: 'unenrolled-sync-test-uuid',
+        startTime: new Date().toISOString(),
+        endTime: new Date().toISOString(),
+        responses: [{ questionId: optionIds.q1, selectedOptionId: optionIds.q1Correct }],
+      });
+
+    expect(res.status).toBe(403);
+  });
+
   it('blocks instructors from submitting quiz attempts', async () => {
     const res = await request(app).post('/api/sync/quiz-attempt').set('Authorization', `Bearer ${instructorToken}`).send({
       quizId,
