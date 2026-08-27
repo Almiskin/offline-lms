@@ -18,6 +18,7 @@ Full supporting documentation for examination submission is in `docs/`:
 - `System_Documentation.docx` \u2014 architecture, database design, full API reference, security measures, offline-sync design rationale, and key design decisions
 - `User_Manual.docx` \u2014 step-by-step Student and Instructor guides
 - `Test_Report.docx` \u2014 automated test suite summary, detailed coverage, manual/integration testing evidence, and defects found and fixed during development
+- `Defect_Log.md` \u2014 final source-code security/correctness audit addendum and regression-testing record
 
 ## Stack
 
