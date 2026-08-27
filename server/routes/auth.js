@@ -177,13 +177,15 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     ]);
 
     let previewUrl = null;
-    try {
-      const result = await sendPasswordResetEmail(email, resetToken);
-      previewUrl = result.previewUrl || null;
-    } catch (mailErr) {
-      // Don't fail the request just because email delivery had a problem —
-      // the token is still valid; log it so the student isn't stuck.
-      console.error('[email] Failed to send reset email:', mailErr.message);
+    if (!skipInTest()) {
+      try {
+        const result = await sendPasswordResetEmail(email, resetToken);
+        previewUrl = result.previewUrl || null;
+      } catch (mailErr) {
+        // Don't fail the request just because email delivery had a problem —
+        // the token is still valid; log it so the student isn't stuck.
+        console.error('[email] Failed to send reset email:', mailErr.message);
+      }
     }
 
     const response = { message: 'If that email is registered, a reset link has been sent.' };
