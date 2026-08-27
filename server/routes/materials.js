@@ -89,8 +89,31 @@ router.post(
 // separate endpoint because downloading IS how a student accesses content in
 // this offline-first design; there's no other "view" action to distinguish.
 router.get('/:id/download', authenticate, async (req, res) => {
-  const [[material]] = await pool.query('SELECT * FROM Materials WHERE MaterialID = ?', [req.params.id]);
+  const [[material]] = await pool.query(
+    `SELECT mat.*, c.CourseID, c.InstructorID
+     FROM Materials mat
+     JOIN Modules m ON mat.ModuleID = m.ModuleID
+     JOIN Courses c ON m.CourseID = c.CourseID
+     WHERE mat.MaterialID = ?`,
+    [req.params.id]
+  );
   if (!material) return res.status(404).json({ error: 'Material not found' });
+
+  if (req.user.role === 'Student') {
+    const [[enrollment]] = await pool.query(
+      'SELECT EnrollmentID FROM Enrollments WHERE StudentID = ? AND CourseID = ?',
+      [req.user.userId, material.CourseID]
+    );
+    if (!enrollment) {
+      return res.status(403).json({ error: 'Enroll in this course to download its materials', requiresEnrollment: true });
+    }
+  } else if (req.user.role === 'Instructor') {
+    if (String(material.InstructorID) !== String(req.user.userId)) {
+      return res.status(403).json({ error: 'Not your course' });
+    }
+  } else {
+    return res.status(403).json({ error: 'Insufficient permissions' });
+  }
 
   const filePath = path.join(__dirname, '..', material.FileURL.replace(/^\/uploads\//, 'uploads/'));
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File missing on server' });
