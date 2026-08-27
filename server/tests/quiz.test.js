@@ -70,12 +70,51 @@ describe('Quiz creation', () => {
     expect(res.status).toBe(400);
   });
 
+  it('rejects a question with more than one correct answer', async () => {
+    const res = await request(app)
+      .post(`/api/quizzes/module/${moduleId}`)
+      .set('Authorization', `Bearer ${instructorToken}`)
+      .send({
+        title: 'Invalid Multiple Correct Answers',
+        questions: [
+          {
+            questionText: 'Which option is correct?',
+            options: [
+              { optionText: 'Option A', isCorrect: true },
+              { optionText: 'Option B', isCorrect: true },
+              { optionText: 'Option C', isCorrect: false },
+            ],
+          },
+        ],
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/exactly one correct answer/i);
+  });
+
   it('hides IsCorrect from students but shows it to instructors', async () => {
     const studentView = await request(app).get(`/api/quizzes/${quizId}`).set('Authorization', `Bearer ${studentToken}`);
     expect(studentView.body.questions[0].options[0].IsCorrect).toBeUndefined();
 
     const instructorView = await request(app).get(`/api/quizzes/${quizId}`).set('Authorization', `Bearer ${instructorToken}`);
     expect(instructorView.body.questions[0].options[0].IsCorrect).toBeDefined();
+  });
+
+  it('rejects an unenrolled student from viewing a quiz', async () => {
+    const unenrolledStudentToken = await registerUser('Student', 'unenrolled-quizstudent@example.com');
+    const res = await request(app).get(`/api/quizzes/${quizId}`)
+      .set('Authorization', `Bearer ${unenrolledStudentToken}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.requiresEnrollment).toBe(true);
+  });
+
+  it('rejects a non-owning instructor from viewing a quiz', async () => {
+    const otherInstructorToken = await registerUser('Instructor', 'other-quiz-instructor@example.com');
+    const res = await request(app).get(`/api/quizzes/${quizId}`)
+      .set('Authorization', `Bearer ${otherInstructorToken}`);
+
+    expect(res.status).toBe(403);
   });
 });
 

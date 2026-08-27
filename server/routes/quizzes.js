@@ -6,15 +6,40 @@ const router = express.Router();
 
 // GET /api/quizzes/:id - full quiz for taking (questions + options, no IsCorrect leaked to students)
 router.get('/:id', authenticate, async (req, res) => {
-  const [[quiz]] = await pool.query('SELECT * FROM Quizzes WHERE QuizID = ?', [req.params.id]);
-  if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+  const [[quizRow]] = await pool.query(
+    `SELECT q.*, c.CourseID AS ParentCourseID, c.InstructorID AS ParentInstructorID
+     FROM Quizzes q
+     JOIN Modules m ON q.ModuleID = m.ModuleID
+     JOIN Courses c ON m.CourseID = c.CourseID
+     WHERE q.QuizID = ?`,
+    [req.params.id]
+  );
+  if (!quizRow) return res.status(404).json({ error: 'Quiz not found' });
+
+  const { ParentCourseID, ParentInstructorID, ...quiz } = quizRow;
+
+  const isInstructor = req.user.role === 'Instructor';
+  if (isInstructor) {
+    if (String(ParentInstructorID) !== String(req.user.userId)) {
+      return res.status(403).json({ error: 'Not your course' });
+    }
+  } else if (req.user.role === 'Student') {
+    const [[enrollment]] = await pool.query(
+      'SELECT EnrollmentID FROM Enrollments WHERE StudentID = ? AND CourseID = ?',
+      [req.user.userId, ParentCourseID]
+    );
+    if (!enrollment) {
+      return res.status(403).json({ error: 'Enroll in this course to view its quiz', requiresEnrollment: true });
+    }
+  } else {
+    return res.status(403).json({ error: 'Insufficient permissions' });
+  }
 
   const [questions] = await pool.query(
     'SELECT QuestionID, QuestionText, SequenceOrder FROM Questions WHERE QuizID = ? ORDER BY SequenceOrder',
     [req.params.id]
   );
   for (const q of questions) {
-    const isInstructor = req.user.role === 'Instructor';
     const [options] = await pool.query(
       `SELECT OptionID, OptionText, SequenceOrder${isInstructor ? ', IsCorrect' : ''}
        FROM Options WHERE QuestionID = ? ORDER BY SequenceOrder`,
@@ -46,8 +71,9 @@ router.post('/module/:moduleId', authenticate, requireRole('Instructor'), async 
       if (!q.questionText || !Array.isArray(q.options) || q.options.length < 2) {
         return res.status(400).json({ error: 'Each question needs text and at least two options' });
       }
-      if (!q.options.some((o) => o.isCorrect)) {
-        return res.status(400).json({ error: 'Each question needs exactly one correct answer' });
+      const correctCount = q.options.filter((option) => option.isCorrect === true).length;
+      if (correctCount !== 1) {
+        return res.status(400).json({ error: 'Each question must have exactly one correct answer' });
       }
     }
 
