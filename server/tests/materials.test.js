@@ -49,6 +49,16 @@ describe('POST /api/materials/module/:moduleId', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when no file is uploaded', async () => {
+    const res = await request(app)
+      .post(`/api/materials/module/${moduleId}`)
+      .set('Authorization', `Bearer ${instructorToken}`)
+      .field('title', 'Missing File');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/no file/i);
+  });
+
   it('blocks students from uploading', async () => {
     const res = await request(app)
       .post(`/api/materials/module/${moduleId}`)
@@ -63,6 +73,66 @@ describe('POST /api/materials/module/:moduleId', () => {
       .post(`/api/materials/module/${moduleId}`)
       .set('Authorization', `Bearer ${otherToken}`)
       .attach('file', Buffer.from('%PDF-1.4'), { filename: 'sneaky.pdf', contentType: 'application/pdf' });
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('GET /api/materials/:id/download', () => {
+  let courseId;
+  let materialId;
+  let outsiderStudentToken;
+  let otherInstructorToken;
+
+  beforeEach(async () => {
+    const course = await request(app).post('/api/courses').set('Authorization', `Bearer ${instructorToken}`)
+      .send({ courseCode: 'MATDL1', title: 'Material Download Course' });
+    courseId = course.body.courseId;
+
+    await request(app).patch(`/api/courses/${courseId}/publish`)
+      .set('Authorization', `Bearer ${instructorToken}`)
+      .send({ isPublished: true });
+    await request(app).post(`/api/courses/${courseId}/enroll`)
+      .set('Authorization', `Bearer ${studentToken}`);
+
+    const mod = await request(app).post(`/api/courses/${courseId}/modules`)
+      .set('Authorization', `Bearer ${instructorToken}`)
+      .send({ moduleTitle: 'Download Module' });
+
+    const upload = await request(app)
+      .post(`/api/materials/module/${mod.body.moduleId}`)
+      .set('Authorization', `Bearer ${instructorToken}`)
+      .attach('file', Buffer.from('%PDF-1.4 test content'), {
+        filename: 'download-test.pdf',
+        contentType: 'application/pdf',
+      })
+      .field('title', 'Download Test Material');
+    materialId = upload.body.materialId;
+
+    outsiderStudentToken = await registerUser('Student', 'mat-outsider@example.com');
+    otherInstructorToken = await registerUser('Instructor', 'mat-other-instructor@example.com');
+  });
+
+  it('blocks an unenrolled student from directly downloading a material', async () => {
+    const res = await request(app)
+      .get(`/api/materials/${materialId}/download`)
+      .set('Authorization', `Bearer ${outsiderStudentToken}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('allows an enrolled student to directly download a material', async () => {
+    const res = await request(app)
+      .get(`/api/materials/${materialId}/download`)
+      .set('Authorization', `Bearer ${studentToken}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it('blocks a non-owning instructor from directly downloading a material', async () => {
+    const res = await request(app)
+      .get(`/api/materials/${materialId}/download`)
+      .set('Authorization', `Bearer ${otherInstructorToken}`);
+
     expect(res.status).toBe(403);
   });
 });

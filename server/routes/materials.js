@@ -45,6 +45,7 @@ router.post(
   (req, res) => {
     upload.single('file')(req, res, async (err) => {
       if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
       try {
         const [[mod]] = await pool.query(
           `SELECT m.ModuleID, c.InstructorID FROM Modules m
@@ -56,8 +57,6 @@ router.post(
           fs.unlinkSync(req.file.path);
           return res.status(403).json({ error: 'Not your course' });
         }
-        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
         const materialType = ALLOWED_MIME[req.file.mimetype];
         const { title, sequenceOrder } = req.body;
 
