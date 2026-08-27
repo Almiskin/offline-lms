@@ -20,6 +20,34 @@ router.post('/quiz-attempt', authenticate, requireRole('Student'), async (req, r
       return res.status(400).json({ error: 'quizId, clientAttemptUUID, and responses are required' });
     }
 
+    const [[quizAccess]] = await conn.query(
+      `SELECT q.QuizID, c.CourseID, c.IsPublished
+       FROM Quizzes q
+       JOIN Modules m ON q.ModuleID = m.ModuleID
+       JOIN Courses c ON m.CourseID = c.CourseID
+       WHERE q.QuizID = ?`,
+      [quizId]
+    );
+
+    if (!quizAccess) {
+      return res.status(404).json({ error: 'Quiz not found' });
+    }
+
+    if (!quizAccess.IsPublished) {
+      return res.status(403).json({ error: 'Course is not published' });
+    }
+
+    const [[enrollment]] = await conn.query(
+      `SELECT EnrollmentID
+       FROM Enrollments
+       WHERE StudentID = ? AND CourseID = ?`,
+      [req.user.userId, quizAccess.CourseID]
+    );
+
+    if (!enrollment) {
+      return res.status(403).json({ error: 'You are not enrolled in this course' });
+    }
+
     const [existing] = await conn.query(
       'SELECT * FROM QuizAttempts WHERE StudentID = ? AND QuizID = ? AND ClientAttemptUUID = ?',
       [req.user.userId, quizId, clientAttemptUUID]
