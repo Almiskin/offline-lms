@@ -858,6 +858,7 @@ async function renderQuizTaking({ id }) {
       document.getElementById('quiz-controls').innerHTML = renderQuizControls();
       wireOptionClicks();
       wireNavigation();
+      wireSubmit();
     });
     document.getElementById('next-question-btn')?.addEventListener('click', () => {
       currentQuestionIndex++;
@@ -865,32 +866,37 @@ async function renderQuizTaking({ id }) {
       document.getElementById('quiz-controls').innerHTML = renderQuizControls();
       wireOptionClicks();
       wireNavigation();
+      wireSubmit();
     });
   }
+
+  function wireSubmit() {
+    document.getElementById('submit-quiz-btn')?.addEventListener('click', async () => {
+      const responses = questions.map((q) => ({
+        questionId: q.QuestionID,
+        selectedOptionId: answers[q.QuestionID] || null,
+      }));
+      const unanswered = responses.filter((r) => r.selectedOptionId === null).length;
+      if (unanswered > 0 && !confirm(`${unanswered} question(s) unanswered. Submit anyway?`)) return;
+
+      await QuizModule.submitAttemptLocally(id, startTime, responses);
+      await SyncModule.updatePendingBadge();
+
+      appEl().innerHTML = `
+        <div class="card">
+          <h2>Quiz saved</h2>
+          <p>Your answers have been saved on this device. ${Connectivity.isOnline
+            ? 'You are online — head to the Sync page to submit and see your score.'
+            : 'They will be submitted automatically once you sync while online.'}</p>
+          <a class="btn" href="#/sync">Go to Sync</a>
+          <a class="btn secondary" href="#/dashboard">Back to Courses</a>
+        </div>`;
+    });
+  }
+
   wireOptionClicks();
   wireNavigation();
-
-  document.getElementById('submit-quiz-btn').addEventListener('click', async () => {
-    const responses = questions.map((q) => ({
-      questionId: q.QuestionID,
-      selectedOptionId: answers[q.QuestionID] || null,
-    }));
-    const unanswered = responses.filter((r) => r.selectedOptionId === null).length;
-    if (unanswered > 0 && !confirm(`${unanswered} question(s) unanswered. Submit anyway?`)) return;
-
-    await QuizModule.submitAttemptLocally(id, startTime, responses);
-    await SyncModule.updatePendingBadge();
-
-    appEl().innerHTML = `
-      <div class="card">
-        <h2>Quiz saved</h2>
-        <p>Your answers have been saved on this device. ${Connectivity.isOnline
-          ? 'You are online — head to the Sync page to submit and see your score.'
-          : 'They will be submitted automatically once you sync while online.'}</p>
-        <a class="btn" href="#/sync">Go to Sync</a>
-        <a class="btn secondary" href="#/dashboard">Back to Courses</a>
-      </div>`;
-  });
+  wireSubmit();
 }
 
 // ---------- SYNC PAGE ----------
