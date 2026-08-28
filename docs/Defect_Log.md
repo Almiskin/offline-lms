@@ -20,7 +20,7 @@ The project now demonstrates three complementary forms of verification:
 2. Live browser testing of the learning and offline-sync workflows.
 3. A final source-code security and correctness audit followed by targeted regression tests.
 
-The full automated suite currently passes 73 tests across 8 test suites. The latest audit corrections are represented in the quiz, material, synchronization, and upload tests listed above.
+The full automated suite currently passes 76 tests across 8 test suites. The latest audit corrections are represented in the quiz, material, synchronization, and upload tests listed above.
 
 ## Earlier Defects
 

@@ -3,7 +3,7 @@
 A Progressive Web App for low-connectivity learning environments, built per
 the project proposal: students browse courses, download materials and quizzes
 for offline use, take quizzes without a connection, and sync results manually
-when back online.
+or automatically after reconnecting.
 
 Tested end-to-end in this build environment: registration, login, course
 creation, module creation, file upload, quiz creation, enrollment enforcement,
@@ -90,7 +90,7 @@ Full supporting documentation for examination submission is in `docs/`:
 npm test
 ```
 
-Runs 65 tests across 8 files (Jest + Supertest, plus one jsdom-based frontend
+Runs 76 tests across 8 files (Jest + Supertest, plus one jsdom-based frontend
 test) against a dedicated `learning_platform_test` database (never touches
 your dev data):
 
