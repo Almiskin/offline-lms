@@ -40,6 +40,8 @@ Full supporting documentation for examination submission is in `docs/`:
    # optionally set SMTP_HOST/SMTP_USER/SMTP_PASS for real password-reset emails;
    # leave blank to use the automatic Ethereal test-inbox fallback
    ```
+  For tests, copy `.env.test.example` to `.env.test` and set the local
+  `DB_PASSWORD`. The `.env.test` file is ignored and must not be committed.
 
 3. **Install and run:**
    ```
@@ -122,8 +124,9 @@ Before running for the first time, create the test database:
 mysql -u root -p -e "CREATE DATABASE learning_platform_test;"
 tail -n +6 server/schema.sql | mysql -u root -p learning_platform_test
 ```
-Then copy `.env.test` (already included) or adjust its `DB_*` values to match
-your local MySQL setup.
+Then copy `.env.test.example` to `.env.test`, set its local `DB_PASSWORD`, and
+adjust its other `DB_*` values to match your MySQL setup. The generated
+`.env.test` file is ignored by Git.
 
 A GitHub Actions workflow (`.github/workflows/test.yml`) runs this same suite
 automatically on every push/PR, spinning up a throwaway MySQL service
