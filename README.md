@@ -90,8 +90,8 @@ Full supporting documentation for examination submission is in `docs/`:
 npm test
 ```
 
-Runs 76 tests across 8 files (Jest + Supertest, plus one jsdom-based frontend
-test) against a dedicated `learning_platform_test` database (never touches
+Runs 78 tests across 9 files (Jest + Supertest, plus jsdom-based frontend
+tests) against a dedicated `learning_platform_test` database (never touches
 your dev data):
 
 - `server/tests/auth.test.js` — registration validation, login, password
@@ -114,6 +114,8 @@ your dev data):
 - `public/js/tests/modal.test.js` — the reusable modal form component
   (rendering, submit/cancel/backdrop-click, XSS-safety of injected values),
   run in a real jsdom environment rather than just syntax-checked
+- `public/js/tests/quiz-ui.test.js` — quiz display-mode selection, one-at-a-time
+  navigation, answer preservation, and final submission behavior
 
 Before running for the first time, create the test database:
 ```
