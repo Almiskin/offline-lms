@@ -93,7 +93,7 @@ Full supporting documentation for examination submission is in `docs/`:
 npm test
 ```
 
-Runs 78 tests across 9 files (Jest + Supertest, plus jsdom-based frontend
+Runs 80 tests across 9 files (Jest + Supertest, plus jsdom-based frontend
 tests) against a dedicated `learning_platform_test` database (never touches
 your dev data):
 
@@ -109,9 +109,9 @@ your dev data):
 - `server/tests/progress.test.js` — Course Progress Summary calculation
   (materials viewed + quizzes attempted), including edge cases like viewing
   the same material twice not double-counting
-- `server/tests/quiz.test.js` — quiz creation validation, server-side scoring
-  (ignores whatever the client claims), idempotent offline-sync, and
-  statistics access control
+- `server/tests/quiz.test.js` — quiz creation and bulk-import validation,
+  server-side scoring (ignores whatever the client claims), idempotent
+  offline-sync, and statistics access control
 - `server/tests/rateLimit.test.js` — verifies the rate-limiting mechanism
   itself, isolated from the main suite
 - `public/js/tests/modal.test.js` — the reusable modal form component

@@ -92,6 +92,43 @@ describe('Quiz creation', () => {
     expect(res.body.error).toMatch(/exactly one correct answer/i);
   });
 
+  it('previews valid JSON bulk-import questions for the owning instructor', async () => {
+    const res = await request(app)
+      .post(`/api/quizzes/module/${moduleId}/import`)
+      .set('Authorization', `Bearer ${instructorToken}`)
+      .attach('file', Buffer.from(JSON.stringify({
+        questions: [{
+          questionText: 'Imported question',
+          options: [
+            { optionText: 'Correct', isCorrect: true },
+            { optionText: 'Incorrect', isCorrect: false },
+          ],
+        }],
+      })), 'questions.json');
+
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBe(1);
+    expect(res.body.questions[0].questionText).toBe('Imported question');
+  });
+
+  it('rejects bulk-import questions with multiple correct answers', async () => {
+    const res = await request(app)
+      .post(`/api/quizzes/module/${moduleId}/import`)
+      .set('Authorization', `Bearer ${instructorToken}`)
+      .attach('file', Buffer.from(JSON.stringify({
+        questions: [{
+          questionText: 'Invalid imported question',
+          options: [
+            { optionText: 'A', isCorrect: true },
+            { optionText: 'B', isCorrect: true },
+          ],
+        }],
+      })), 'questions.json');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/exactly one correct answer/i);
+  });
+
   it('hides IsCorrect from students but shows it to instructors', async () => {
     const studentView = await request(app).get(`/api/quizzes/${quizId}`).set('Authorization', `Bearer ${studentToken}`);
     expect(studentView.body.questions[0].options[0].IsCorrect).toBeUndefined();
