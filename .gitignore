@@ -1,5 +1,6 @@
 node_modules/
 .env
+.env.test
 server/uploads/*
 !server/uploads/.gitkeep
 *.log
