@@ -93,7 +93,7 @@ Full supporting documentation for examination submission is in `docs/`:
 npm test
 ```
 
-Runs 80 tests across 9 files (Jest + Supertest, plus jsdom-based frontend
+Runs 82 tests across 9 files (Jest + Supertest, plus jsdom-based frontend
 tests) against a dedicated `learning_platform_test` database (never touches
 your dev data):
 

@@ -129,6 +129,28 @@ describe('Quiz creation', () => {
     expect(res.body.error).toMatch(/exactly one correct answer/i);
   });
 
+  it('previews valid CSV bulk-import questions', async () => {
+    const csv = 'questionText,optionA,optionB,optionC,optionD,correctAnswer\nImported CSV question,A,B,,,B\n';
+    const res = await request(app)
+      .post(`/api/quizzes/module/${moduleId}/import`)
+      .set('Authorization', `Bearer ${instructorToken}`)
+      .attach('file', Buffer.from(csv), 'questions.csv');
+
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBe(1);
+    expect(res.body.questions[0].options[1].isCorrect).toBe(true);
+  });
+
+  it('blocks a non-owning instructor from importing quiz questions', async () => {
+    const otherInstructorToken = await registerUser('Instructor', 'bulk-import-outsider@example.com');
+    const res = await request(app)
+      .post(`/api/quizzes/module/${moduleId}/import`)
+      .set('Authorization', `Bearer ${otherInstructorToken}`)
+      .attach('file', Buffer.from('questionText,optionA,optionB,correctAnswer\nQ,A,B,A\n'), 'questions.csv');
+
+    expect(res.status).toBe(403);
+  });
+
   it('hides IsCorrect from students but shows it to instructors', async () => {
     const studentView = await request(app).get(`/api/quizzes/${quizId}`).set('Authorization', `Bearer ${studentToken}`);
     expect(studentView.body.questions[0].options[0].IsCorrect).toBeUndefined();
