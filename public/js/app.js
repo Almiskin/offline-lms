@@ -699,6 +699,11 @@ function renderNewQuiz({ moduleId }) {
       <div id="nq-error" class="error-msg"></div>
       <label>Title</label><input id="nq-title" />
       <label>Instructions</label><textarea id="nq-instructions" rows="2"></textarea>
+      <label>Question display</label>
+      <select id="nq-display-mode">
+        <option value="all">All questions at once</option>
+        <option value="one">One question at a time</option>
+      </select>
       <div id="questions-container"></div>
       <button class="btn secondary" id="add-question-btn" type="button">+ Add Question</button>
       <br/><br/>
@@ -766,7 +771,7 @@ function renderNewQuiz({ moduleId }) {
       await Api.createQuiz(moduleId, {
         title: document.getElementById('nq-title').value.trim(),
         instructions: document.getElementById('nq-instructions').value.trim(),
-        showOneAtATime: false,
+        showOneAtATime: document.getElementById('nq-display-mode').value === 'one',
         questions,
       });
       history.back();
@@ -793,9 +798,11 @@ async function renderQuizTaking({ id }) {
   const { quiz, questions } = data;
   const startTime = new Date().toISOString();
   const answers = {}; // questionId -> optionId
+  let currentQuestionIndex = 0;
 
   function renderQuestions() {
-    return questions
+    const visibleQuestions = quiz.ShowOneAtATime ? [questions[currentQuestionIndex]] : questions;
+    return visibleQuestions
       .map(
         (q) => `
       <div class="card">
@@ -814,12 +821,24 @@ async function renderQuizTaking({ id }) {
       .join('');
   }
 
+  function renderQuizControls() {
+    if (!quiz.ShowOneAtATime) return '<button class="btn" id="submit-quiz-btn">Submit Quiz</button>';
+    return `
+      <p style="color:var(--muted)">Question ${currentQuestionIndex + 1} of ${questions.length}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn secondary" id="previous-question-btn" type="button" ${currentQuestionIndex === 0 ? 'disabled' : ''}>Previous</button>
+        ${currentQuestionIndex === questions.length - 1
+          ? '<button class="btn" id="submit-quiz-btn" type="button">Submit Quiz</button>'
+          : '<button class="btn" id="next-question-btn" type="button">Next</button>'}
+      </div>`;
+  }
+
   appEl().innerHTML = `
     <h2>${escapeHtml(quiz.Title)}</h2>
     <p style="color:var(--muted)">${escapeHtml(quiz.Instructions || '')}</p>
     ${!Connectivity.isOnline ? '<p class="tag needs-net">Offline — your answers will be saved locally and synced later.</p>' : ''}
     <div id="quiz-questions">${renderQuestions()}</div>
-    <button class="btn" id="submit-quiz-btn">Submit Quiz</button>
+    <div id="quiz-controls">${renderQuizControls()}</div>
   `;
 
   function wireOptionClicks() {
@@ -831,7 +850,25 @@ async function renderQuizTaking({ id }) {
       })
     );
   }
+
+  function wireNavigation() {
+    document.getElementById('previous-question-btn')?.addEventListener('click', () => {
+      currentQuestionIndex--;
+      document.getElementById('quiz-questions').innerHTML = renderQuestions();
+      document.getElementById('quiz-controls').innerHTML = renderQuizControls();
+      wireOptionClicks();
+      wireNavigation();
+    });
+    document.getElementById('next-question-btn')?.addEventListener('click', () => {
+      currentQuestionIndex++;
+      document.getElementById('quiz-questions').innerHTML = renderQuestions();
+      document.getElementById('quiz-controls').innerHTML = renderQuizControls();
+      wireOptionClicks();
+      wireNavigation();
+    });
+  }
   wireOptionClicks();
+  wireNavigation();
 
   document.getElementById('submit-quiz-btn').addEventListener('click', async () => {
     const responses = questions.map((q) => ({
