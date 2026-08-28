@@ -704,6 +704,10 @@ function renderNewQuiz({ moduleId }) {
         <option value="all">All questions at once</option>
         <option value="one">One question at a time</option>
       </select>
+      <label>Bulk import questions (.json, .csv, or .docx)</label>
+      <input type="file" id="nq-import-file" accept=".json,.csv,.docx" />
+      <button class="btn secondary" id="nq-import-btn" type="button">Preview Import</button>
+      <div id="nq-import-preview"></div>
       <div id="questions-container"></div>
       <button class="btn secondary" id="add-question-btn" type="button">+ Add Question</button>
       <br/><br/>
@@ -735,6 +739,29 @@ function renderNewQuiz({ moduleId }) {
   }
   addQuestionBlock();
 
+  let importedQuestions = null;
+
+  document.getElementById('nq-import-btn').addEventListener('click', async () => {
+    const fileInput = document.getElementById('nq-import-file');
+    const previewEl = document.getElementById('nq-import-preview');
+    if (!fileInput.files[0]) {
+      previewEl.innerHTML = '<p class="error-msg">Select a JSON, CSV, or DOCX file first.</p>';
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    previewEl.textContent = 'Reading import…';
+    try {
+      const result = await Api.previewQuizImport(moduleId, formData);
+      importedQuestions = result.questions;
+      previewEl.innerHTML = `<p class="success-msg">${result.count} questions ready to import. Saving this quiz will use the imported questions.</p>
+        <ol>${importedQuestions.map((question) => `<li>${escapeHtml(question.questionText)} (${question.options.length} options)</li>`).join('')}</ol>`;
+    } catch (err) {
+      importedQuestions = null;
+      previewEl.innerHTML = `<p class="error-msg">${escapeHtml(err.message)}</p>`;
+    }
+  });
+
   document.getElementById('add-question-btn').addEventListener('click', addQuestionBlock);
   document.getElementById('questions-container').addEventListener('click', (e) => {
     const addOptionBtn = e.target.closest('.add-option-btn');
@@ -754,17 +781,19 @@ function renderNewQuiz({ moduleId }) {
   document.getElementById('save-quiz-btn').addEventListener('click', async () => {
     const errorEl = document.getElementById('nq-error');
     errorEl.textContent = '';
-    const questionBlocks = document.querySelectorAll('#questions-container > div');
-    const questions = [];
-    for (const block of questionBlocks) {
-      const questionText = block.querySelector('.q-text').value.trim();
-      const optionInputs = block.querySelectorAll('.opt-text');
-      const correctRadio = block.querySelector('.opt-correct:checked');
-      const options = Array.from(optionInputs)
-        .map((inp, i) => ({ optionText: inp.value.trim(), isCorrect: correctRadio && Number(correctRadio.value) === i }))
-        .filter((o) => o.optionText);
-      if (questionText && options.length >= 2) {
-        questions.push({ questionText, options });
+    const questions = importedQuestions || [];
+    if (!importedQuestions) {
+      const questionBlocks = document.querySelectorAll('#questions-container > div');
+      for (const block of questionBlocks) {
+        const questionText = block.querySelector('.q-text').value.trim();
+        const optionInputs = block.querySelectorAll('.opt-text');
+        const correctRadio = block.querySelector('.opt-correct:checked');
+        const options = Array.from(optionInputs)
+          .map((inp, i) => ({ optionText: inp.value.trim(), isCorrect: correctRadio && Number(correctRadio.value) === i }))
+          .filter((o) => o.optionText);
+        if (questionText && options.length >= 2) {
+          questions.push({ questionText, options });
+        }
       }
     }
     try {

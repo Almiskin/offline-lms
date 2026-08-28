@@ -59,6 +59,8 @@ const Api = {
 
   getQuiz: (id) => apiRequest('GET', `/quizzes/${id}`),
   createQuiz: (moduleId, payload) => apiRequest('POST', `/quizzes/module/${moduleId}`, payload),
+  previewQuizImport: (moduleId, formData) =>
+    apiRequest('POST', `/quizzes/module/${moduleId}/import`, formData, { isFormData: true }),
   deleteQuiz: (id) => apiRequest('DELETE', `/quizzes/${id}`),
   quizHistory: (id) => apiRequest('GET', `/quizzes/${id}/history`),
 
