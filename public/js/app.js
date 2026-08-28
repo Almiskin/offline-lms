@@ -187,6 +187,51 @@ function renderForgotPassword() {
   });
 }
 
+function renderResetPassword() {
+  const query = window.location.hash.split('?')[1] || '';
+  const token = new URLSearchParams(query).get('token') || '';
+
+  appEl().innerHTML = `
+    <div class="form-container card">
+      <h2>Choose a new password</h2>
+      <div id="rp-msg"></div>
+      <form id="rp-form">
+        <label>New password (min 8 chars, letters + numbers)</label>
+        <input type="password" id="rp-password" required />
+        <label>Confirm new password</label>
+        <input type="password" id="rp-confirm" required />
+        <button class="btn" type="submit" style="width:100%">Update password</button>
+      </form>
+      <p style="margin-top:12px;font-size:0.85rem"><a href="#/login">Back to log in</a></p>
+    </div>`;
+
+  const form = document.getElementById('rp-form');
+  const messageEl = document.getElementById('rp-msg');
+  if (!token) {
+    messageEl.innerHTML = '<p class="error-msg">This reset link is missing its token.</p>';
+    form.querySelector('button').disabled = true;
+    return;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = document.getElementById('rp-password').value;
+    const confirmation = document.getElementById('rp-confirm').value;
+    if (password !== confirmation) {
+      messageEl.innerHTML = '<p class="error-msg">Passwords do not match.</p>';
+      return;
+    }
+    try {
+      const result = await Api.resetPassword(token, password);
+      messageEl.innerHTML = `<p class="success-msg">${escapeHtml(result.message)}</p>`;
+      form.reset();
+      form.querySelector('button').disabled = true;
+    } catch (err) {
+      messageEl.innerHTML = `<p class="error-msg">${escapeHtml(err.message)}</p>`;
+    }
+  });
+}
+
 // ---------- DASHBOARD ----------
 
 async function renderDashboard() {
@@ -1014,6 +1059,7 @@ async function renderCourseProgress({ id }) {
 Router.add('/login', renderLogin);
 Router.add('/register', renderRegister);
 Router.add('/forgot-password', renderForgotPassword);
+Router.add('/reset-password', renderResetPassword);
 Router.add('/dashboard', renderDashboard);
 Router.add('/new-course', renderNewCourse);
 Router.add('/course/:id', renderCourseDetail);
