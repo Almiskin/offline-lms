@@ -1,4 +1,4 @@
-const CACHE_NAME = 'offline-lms-shell-v2';
+const CACHE_NAME = 'offline-lms-shell-v3';
 
 // Core app shell: everything needed to load the UI with zero connectivity.
 // Actual course content (PDFs, images, quiz JSON) is cached separately in
