@@ -7,7 +7,8 @@ const router = express.Router();
 // GET /api/quizzes/:id - full quiz for taking (questions + options, no IsCorrect leaked to students)
 router.get('/:id', authenticate, async (req, res) => {
   const [[quizRow]] = await pool.query(
-    `SELECT q.*, c.CourseID AS ParentCourseID, c.InstructorID AS ParentInstructorID
+        `SELECT q.*, c.CourseID AS ParentCourseID, c.InstructorID AS ParentInstructorID,
+          c.IsPublished AS ParentCoursePublished
      FROM Quizzes q
      JOIN Modules m ON q.ModuleID = m.ModuleID
      JOIN Courses c ON m.CourseID = c.CourseID
@@ -24,6 +25,9 @@ router.get('/:id', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'Not your course' });
     }
   } else if (req.user.role === 'Student') {
+    if (!quizRow.ParentCoursePublished) {
+      return res.status(403).json({ error: 'Course is not published' });
+    }
     const [[enrollment]] = await pool.query(
       'SELECT EnrollmentID FROM Enrollments WHERE StudentID = ? AND CourseID = ?',
       [req.user.userId, ParentCourseID]

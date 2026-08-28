@@ -80,6 +80,7 @@ describe('POST /api/materials/module/:moduleId', () => {
 describe('GET /api/materials/:id/download', () => {
   let courseId;
   let materialId;
+  let fileURL;
   let outsiderStudentToken;
   let otherInstructorToken;
 
@@ -107,6 +108,7 @@ describe('GET /api/materials/:id/download', () => {
       })
       .field('title', 'Download Test Material');
     materialId = upload.body.materialId;
+    fileURL = upload.body.fileURL;
 
     outsiderStudentToken = await registerUser('Student', 'mat-outsider@example.com');
     otherInstructorToken = await registerUser('Instructor', 'mat-other-instructor@example.com');
@@ -134,6 +136,25 @@ describe('GET /api/materials/:id/download', () => {
       .set('Authorization', `Bearer ${otherInstructorToken}`);
 
     expect(res.status).toBe(403);
+  });
+
+  it('does not expose uploaded files through a public URL', async () => {
+    const res = await request(app).get(fileURL);
+
+    expect(res.status).toBe(404);
+  });
+
+  it('blocks an enrolled student from downloading material after the course is unpublished', async () => {
+    await request(app).patch(`/api/courses/${courseId}/publish`)
+      .set('Authorization', `Bearer ${instructorToken}`)
+      .send({ isPublished: false });
+
+    const res = await request(app)
+      .get(`/api/materials/${materialId}/download`)
+      .set('Authorization', `Bearer ${studentToken}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/not published/i);
   });
 });
 

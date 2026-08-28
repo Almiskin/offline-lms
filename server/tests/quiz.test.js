@@ -116,6 +116,17 @@ describe('Quiz creation', () => {
 
     expect(res.status).toBe(403);
   });
+
+  it('blocks an enrolled student from viewing a quiz after the course is unpublished', async () => {
+    const { pool } = require('./testUtils');
+    await pool.query('UPDATE Courses SET IsPublished = FALSE WHERE CourseID = (SELECT CourseID FROM Modules WHERE ModuleID = ?)', [moduleId]);
+
+    const res = await request(app).get(`/api/quizzes/${quizId}`)
+      .set('Authorization', `Bearer ${studentToken}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/not published/i);
+  });
 });
 
 describe('POST /api/sync/quiz-attempt', () => {

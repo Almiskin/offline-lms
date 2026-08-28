@@ -27,7 +27,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/materials', materialRoutes);
@@ -36,6 +35,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/reports', reportRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/uploads/*', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 // Serve the PWA frontend
 app.use(express.static(path.join(__dirname, '..', 'public')));

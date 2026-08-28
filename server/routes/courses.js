@@ -71,6 +71,9 @@ router.get('/:id', authenticate, async (req, res) => {
   if (!course) return res.status(404).json({ error: 'Course not found' });
 
   if (req.user.role === 'Student') {
+    if (!course.IsPublished) {
+      return res.status(403).json({ error: 'Course is not published' });
+    }
     const [[enrollment]] = await pool.query(
       'SELECT EnrollmentID FROM Enrollments WHERE StudentID = ? AND CourseID = ?',
       [req.user.userId, courseId]

@@ -89,7 +89,7 @@ router.post(
 // this offline-first design; there's no other "view" action to distinguish.
 router.get('/:id/download', authenticate, async (req, res) => {
   const [[material]] = await pool.query(
-    `SELECT mat.*, c.CourseID, c.InstructorID
+    `SELECT mat.*, c.CourseID, c.InstructorID, c.IsPublished
      FROM Materials mat
      JOIN Modules m ON mat.ModuleID = m.ModuleID
      JOIN Courses c ON m.CourseID = c.CourseID
@@ -99,6 +99,9 @@ router.get('/:id/download', authenticate, async (req, res) => {
   if (!material) return res.status(404).json({ error: 'Material not found' });
 
   if (req.user.role === 'Student') {
+    if (!material.IsPublished) {
+      return res.status(403).json({ error: 'Course is not published' });
+    }
     const [[enrollment]] = await pool.query(
       'SELECT EnrollmentID FROM Enrollments WHERE StudentID = ? AND CourseID = ?',
       [req.user.userId, material.CourseID]
