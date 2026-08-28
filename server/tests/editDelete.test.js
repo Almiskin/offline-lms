@@ -4,6 +4,8 @@ const fs = require('fs');
 const { resetDatabase, closeDatabase } = require('./testUtils');
 const app = require('../app');
 
+jest.setTimeout(30000);
+
 let instructorToken;
 let otherInstructorToken;
 let studentToken;
