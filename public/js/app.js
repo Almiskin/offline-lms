@@ -477,11 +477,23 @@ async function renderCourseDetail({ id }) {
     }
   }
 
+  let storageWarningHtml = '';
+  try {
+    const storage = await OfflineManager.storageSummary();
+    const usage = storage.browserUsage ?? storage.usage;
+    if (storage.quota && usage / storage.quota >= 0.8) {
+      storageWarningHtml = `<p class="tag needs-net">Offline storage is ${formatBytes(usage)} of ${formatBytes(storage.quota)}. Remove unused downloads before saving more content.</p>`;
+    }
+  } catch (_) {
+    // Storage estimates are optional and unavailable in some browsers.
+  }
+
   appEl().innerHTML = `
     <a href="#/dashboard">&larr; Back to courses</a>
     <h2>${escapeHtml(course.Title)}</h2>
     <p style="color:var(--muted)">${escapeHtml(course.Description || '')}</p>
     ${Auth.isInstructor() && !Connectivity.isOnline ? '<p class="tag needs-net">Course administration requires an internet connection.</p>' : ''}
+    ${storageWarningHtml}
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       <button class="btn" id="download-course-btn" ${!Connectivity.isOnline ? 'disabled' : ''}>⬇ Download entire course for offline</button>
       ${addModuleBtn}
